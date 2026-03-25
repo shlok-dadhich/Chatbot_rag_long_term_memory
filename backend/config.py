@@ -9,6 +9,26 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _bootstrap_hf_token_env() -> None:
+  """Map numbered HF token vars to the standard env var if needed."""
+  if os.getenv("HUGGINGFACEHUB_API_TOKEN", "").strip():
+    return
+
+  for key in (
+    "HUGGINGFACEHUB_API_TOKEN1",
+    "HUGGINGFACEHUB_API_TOKEN2",
+    "HUGGINGFACEHUB_API_TOKEN3",
+    "HUGGINGFACEHUB_API_TOKEN4",
+  ):
+    token = os.getenv(key, "").strip()
+    if token:
+      os.environ["HUGGINGFACEHUB_API_TOKEN"] = token
+      return
+
+
+_bootstrap_hf_token_env()
+
 # ── Database ──────────────────────────────────────────────────────────────────
 
 DB_URI: str = os.getenv(
