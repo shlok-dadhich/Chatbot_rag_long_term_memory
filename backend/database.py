@@ -2,7 +2,7 @@
 backend/database.py
 -------------------
 Sets up the shared PostgreSQL connection pool, LangGraph checkpointer (conversation
-persistence) and LangGraph store (long-term memory).
+persistence), and a store backend for long-term memory.
 """
 
 import atexit
@@ -48,7 +48,7 @@ def _can_use_postgres() -> bool:
     if any(marker in DB_URI for marker in local_markers):
         return False
 
-    return bool(ConnectionPool and PostgresSaver and PostgresStore)
+    return bool(ConnectionPool and PostgresSaver)
 
 
 if _can_use_postgres():
@@ -62,8 +62,10 @@ if _can_use_postgres():
         candidate_checkpointer = PostgresSaver(pool)
         candidate_checkpointer.setup()
 
-        candidate_store = PostgresStore(pool)
-        candidate_store.setup()
+        candidate_store = InMemoryStore()
+        if PostgresStore:
+            candidate_store = PostgresStore(pool)
+            candidate_store.setup()
 
         checkpointer = candidate_checkpointer
         postgres_store = candidate_store
