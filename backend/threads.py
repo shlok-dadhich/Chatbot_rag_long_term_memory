@@ -11,10 +11,16 @@ from backend.database import pool
 from backend.rag import remove_thread_rag
 
 
+_MEMORY_THREAD_METADATA: dict[str, dict] = {}
+
+
 # ── Schema init ───────────────────────────────────────────────────────────────
 
 def init_thread_metadata_table() -> None:
     """Create the thread_metadata table if it does not already exist."""
+    if pool is None:
+        return
+
     with pool.connection() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS thread_metadata (
@@ -47,6 +53,10 @@ init_thread_metadata_table()
 
 def save_thread_title(thread_id: str, title: str, user_id: str) -> None:
     """Insert or update the title for a thread."""
+    if pool is None:
+        _MEMORY_THREAD_METADATA[thread_id] = {"user_id": user_id, "title": title}
+        return
+
     with pool.connection() as conn:
         conn.execute(
             """
@@ -62,6 +72,13 @@ def save_thread_title(thread_id: str, title: str, user_id: str) -> None:
 
 def get_thread_metadata(user_id: str) -> dict:
     """Return {thread_id: {title, titled}} for one user, newest first."""
+    if pool is None:
+        return {
+            tid: {"title": row.get("title") or "New conversation", "titled": True}
+            for tid, row in _MEMORY_THREAD_METADATA.items()
+            if row.get("user_id") == user_id
+        }
+
     with pool.connection() as conn:
         rows = conn.execute(
             """
@@ -82,6 +99,14 @@ def delete_thread_conversation(thread_id: str, user_id: str) -> bool:
             and in-process RAG state.
     """
     try:
+        if pool is None:
+            row = _MEMORY_THREAD_METADATA.get(thread_id)
+            if not row or row.get("user_id") != user_id:
+                return False
+            _MEMORY_THREAD_METADATA.pop(thread_id, None)
+            remove_thread_rag(thread_id)
+            return True
+
         with pool.connection() as conn:
             owned = conn.execute(
                 "SELECT 1 FROM thread_metadata WHERE thread_id = %s AND user_id = %s",

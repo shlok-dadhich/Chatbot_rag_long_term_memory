@@ -10,6 +10,7 @@ Run with:
 from __future__ import annotations
 
 import os
+import uuid
 import warnings
 from typing import Any
 
@@ -103,22 +104,35 @@ def add_thread(thread_id: str, title: str = "New Chat") -> None:
 
 
 def resolve_user_id() -> str:
-    """Resolve active user id from query params or session, with safe fallback."""
-    raw = st.query_params.get("user_id") or st.query_params.get("user")
-    if isinstance(raw, list):
-        raw = raw[0] if raw else ""
-    if isinstance(raw, str) and raw.strip():
-        return raw.strip()
+    """Resolve active user id from query params/session/env, with fallback."""
 
-    session_user = st.session_state.get("user_id")
-    if isinstance(session_user, str) and session_user.strip():
-        return session_user.strip()
+    def _normalize(raw: Any) -> str:
+        if isinstance(raw, list):
+            raw = raw[0] if raw else ""
+        if not isinstance(raw, str):
+            return ""
+        cleaned = raw.strip()
+        return cleaned[:128] if cleaned else ""
 
-    env_user = (LTM_USER_ID or "").strip()
+    raw = _normalize(st.query_params.get("user_id") or st.query_params.get("user"))
+    if raw:
+        return raw
+
+    session_user = _normalize(st.session_state.get("user_id"))
+    if session_user:
+        return session_user
+
+    env_user = _normalize(LTM_USER_ID)
     if env_user and env_user.lower() not in {"u1", "default", "user"}:
         return env_user
 
-    return f"anon_{generate_thread_id().split('-')[0]}"
+    created = f"anon_{uuid.uuid4().hex}"
+    try:
+        # Persist the generated id in the URL for stable reload behavior.
+        st.query_params["user_id"] = created
+    except Exception:
+        pass
+    return created
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -363,7 +377,6 @@ if get_view_mode(st.query_params) == "memories":
     st.markdown("---")
     st.markdown("[← Back to Chat](?view=chat)")
     st.stop()
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Main chat area

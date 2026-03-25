@@ -34,6 +34,7 @@ WEATHER_API_KEY: str   = os.getenv("WEATHER_API_KEY", "")
 # ── App ───────────────────────────────────────────────────────────────────────
 
 LTM_USER_ID: str = os.getenv("LTM_USER_ID", "u1")
+COOKIE_SECRET: str = os.getenv("COOKIE_SECRET", "change-me-cookie-secret")
 
 # ── Prompt templates ──────────────────────────────────────────────────────────
 

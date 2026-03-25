@@ -124,6 +124,7 @@ WEATHER_API_KEY=your_openweathermap_key_here
 
 # App defaults
 LTM_USER_ID=u1
+COOKIE_SECRET=change-me-cookie-secret
 ```
 
 | Variable | Where to get it | Required? |
@@ -132,6 +133,7 @@ LTM_USER_ID=u1
 | `HUGGINGFACEHUB_API_TOKEN` | [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) | ✅ Yes |
 | `ALPHA_VINTAGE_KEY` | [alphavantage.co](https://www.alphavantage.co/support/#api-key) | Optional |
 | `WEATHER_API_KEY` | [openweathermap.org](https://openweathermap.org/api) | Optional |
+| `COOKIE_SECRET` | Any strong random string used to encrypt browser cookie data | Recommended |
 
 ---
 
@@ -152,6 +154,9 @@ LTM_USER_ID=u1
 5. Click **Deploy** — done!
 
 > **Note:** Streamlit Cloud needs a cloud-hosted Postgres. Use [Neon](https://neon.tech) (free tier) or [Supabase](https://supabase.com) (free tier).
+>
+> If `DATABASE_URL` is missing/unreachable, the app now starts in **in-memory fallback mode**
+> (no import crash), but conversation and long-term memory persistence will reset on restart.
 
 ---
 
