@@ -11,7 +11,6 @@ from __future__ import annotations
 from typing import Optional
 
 import requests
-from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_core.tools import tool
 
 from backend.config import ALPHA_VINTAGE_KEY, WEATHER_API_KEY
@@ -28,14 +27,20 @@ from backend.rag import (
 def web_search(query: str) -> dict:
 	"""Search the web using DuckDuckGo and return relevant snippets."""
 	try:
-		search = DuckDuckGoSearchRun(region="in-en")
-		result = search.invoke(query)
+		from ddgs import DDGS
+
+		with DDGS() as ddgs:
+			results = list(ddgs.text(query, region="in-en", max_results=5))
+		result = "\n".join(
+			item.get("body") or item.get("snippet") or item.get("title") or ""
+			for item in results
+		).strip()
 		return {"query": query, "result": result}
 	except Exception as exc:
 		return {
 			"error": (
 				"Web search tool is unavailable right now. "
-				"Install optional dependency 'ddgs' and retry."
+				"Check outbound network access and the optional dependency 'ddgs'."
 			),
 			"details": str(exc),
 		}

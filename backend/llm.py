@@ -5,6 +5,8 @@ Initialises the HuggingFace LLM (chat model) and the sentence-transformer
 embedding model used across the application.
 """
 
+from functools import lru_cache
+
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEmbeddings, HuggingFaceEndpoint
 
 from backend.config import (
@@ -27,8 +29,11 @@ model = ChatHuggingFace(llm=_endpoint)
 
 # ── Embedding model ───────────────────────────────────────────────────────────
 
-embedding = HuggingFaceEmbeddings(
-    model_name=EMBEDDING_MODEL,
-    model_kwargs={"device": "cpu"},
-    encode_kwargs={"normalize_embeddings": True},
-)
+@lru_cache(maxsize=1)
+def get_embedding() -> HuggingFaceEmbeddings:
+    """Load the embedding model lazily when a PDF is indexed."""
+    return HuggingFaceEmbeddings(
+        model_name=EMBEDDING_MODEL,
+        model_kwargs={"device": "cpu"},
+        encode_kwargs={"normalize_embeddings": True},
+    )

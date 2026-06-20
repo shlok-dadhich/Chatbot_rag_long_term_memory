@@ -16,7 +16,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from backend.llm import embedding
+from backend.llm import get_embedding
 
 # ── In-process RAG state ──────────────────────────────────────────────────────
 
@@ -121,7 +121,7 @@ def ingest_pdf(file_bytes: bytes, thread_id: str, filename: Optional[str] = None
         raise ValueError("No file bytes provided.")
 
     documents, chunks = _load_and_chunk_pdf(file_bytes)
-    vectorstore = FAISS.from_documents(chunks, embedding)
+    vectorstore = FAISS.from_documents(chunks, get_embedding())
     retriever   = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
     resolved_name = filename or f"pdf_{thread_id[:8]}.pdf"
@@ -146,7 +146,7 @@ def ingest_global_pdf(file_bytes: bytes, filename: Optional[str] = None) -> dict
         raise ValueError("No file bytes provided.")
 
     documents, chunks = _load_and_chunk_pdf(file_bytes)
-    vectorstore       = FAISS.from_documents(chunks, embedding)
+    vectorstore       = FAISS.from_documents(chunks, get_embedding())
     _GLOBAL_RETRIEVER = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
     resolved_name    = filename or "global_pdf.pdf"

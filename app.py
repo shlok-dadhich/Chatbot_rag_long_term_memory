@@ -9,10 +9,26 @@ Run with:
 
 from __future__ import annotations
 
+import asyncio
 import os
+import sys
 import uuid
 import warnings
 from typing import Any
+
+
+def _configure_windows_event_loop() -> None:
+    """Avoid noisy Proactor socket shutdown errors on Windows."""
+    if sys.platform != "win32":
+        return
+
+    try:
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    except (AttributeError, RuntimeError):
+        pass
+
+
+_configure_windows_event_loop()
 
 import streamlit as st
 
@@ -297,8 +313,8 @@ with st.sidebar:
     # ── Long-Term Memory link ─────────────────────────────────────────────
     st.markdown("### Long-Term Memory")
     st.markdown(
-        """
-        <a href="?view=memories" target="_blank" style="text-decoration:none;color:inherit;">
+        f"""
+        <a href="?view=memories&user_id={USER_ID}" target="_blank" style="text-decoration:none;color:inherit;">
             <div style="
                 display:flex; align-items:center; justify-content:center;
                 background:rgba(151,166,195,0.15);
@@ -375,7 +391,7 @@ if get_view_mode(st.query_params) == "memories":
         """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("[← Back to Chat](?view=chat)")
+    st.markdown(f"[← Back to Chat](?view=chat&user_id={USER_ID})")
     st.stop()
 
 # ─────────────────────────────────────────────────────────────────────────────

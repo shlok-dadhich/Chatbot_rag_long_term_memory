@@ -5,13 +5,56 @@ Central place for all environment variables, constants, and prompt templates.
 """
 
 import os
+from typing import Any, Callable, TypeVar
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
+T = TypeVar("T")
+
+
+def _read_streamlit_secret(key: str) -> Any:
+  """Return a Streamlit secret when running on Streamlit Cloud."""
+  try:
+    import streamlit as st
+
+    return st.secrets.get(key)
+  except Exception:
+    return None
+
+
+def _get_setting(key: str, default: str = "") -> str:
+  """Read config from env first, then Streamlit secrets, then default."""
+  value = os.getenv(key)
+  if value is None:
+    value = _read_streamlit_secret(key)
+  if value is None:
+    return default
+  return str(value).strip()
+
+
+def _parse_setting(key: str, default: T, parser: Callable[[str], T]) -> T:
+  raw = _get_setting(key, str(default))
+  try:
+    return parser(raw)
+  except (TypeError, ValueError):
+    return default
+
+
+def _sync_secret_to_env(key: str) -> None:
+  """Expose Streamlit secrets to libraries that only inspect os.environ."""
+  if os.getenv(key):
+    return
+  value = _read_streamlit_secret(key)
+  if value:
+    os.environ[key] = str(value).strip()
+
 
 def _bootstrap_hf_token_env() -> None:
   """Map numbered HF token vars to the standard env var if needed."""
+  _sync_secret_to_env("HUGGINGFACEHUB_API_TOKEN")
+
   if os.getenv("HUGGINGFACEHUB_API_TOKEN", "").strip():
     return
 
@@ -21,6 +64,7 @@ def _bootstrap_hf_token_env() -> None:
     "HUGGINGFACEHUB_API_TOKEN3",
     "HUGGINGFACEHUB_API_TOKEN4",
   ):
+    _sync_secret_to_env(key)
     token = os.getenv(key, "").strip()
     if token:
       os.environ["HUGGINGFACEHUB_API_TOKEN"] = token
@@ -31,30 +75,30 @@ _bootstrap_hf_token_env()
 
 # ── Database ──────────────────────────────────────────────────────────────────
 
-DB_URI: str = os.getenv(
+DB_URI: str = _get_setting(
     "DATABASE_URL",
     "postgresql://postgres:postgres@localhost:5432/chatbot?sslmode=disable",
 )
 
 # ── HuggingFace ───────────────────────────────────────────────────────────────
 
-HF_REPO_ID: str    = os.getenv("HF_REPO_ID", "Qwen/Qwen2.5-7B-Instruct")
-HF_MAX_TOKENS: int = int(os.getenv("HF_MAX_TOKENS", "2048"))
-HF_TEMPERATURE: float = float(os.getenv("HF_TEMPERATURE", "0.8"))
+HF_REPO_ID: str = _get_setting("HF_REPO_ID", "Qwen/Qwen2.5-7B-Instruct")
+HF_MAX_TOKENS: int = _parse_setting("HF_MAX_TOKENS", 2048, int)
+HF_TEMPERATURE: float = _parse_setting("HF_TEMPERATURE", 0.8, float)
 
-EMBEDDING_MODEL: str = os.getenv(
+EMBEDDING_MODEL: str = _get_setting(
     "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
 )
 
 # ── External API keys ─────────────────────────────────────────────────────────
 
-ALPHA_VINTAGE_KEY: str = os.getenv("ALPHA_VINTAGE_KEY", "")
-WEATHER_API_KEY: str   = os.getenv("WEATHER_API_KEY", "")
+ALPHA_VINTAGE_KEY: str = _get_setting("ALPHA_VINTAGE_KEY", "")
+WEATHER_API_KEY: str = _get_setting("WEATHER_API_KEY", "")
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
-LTM_USER_ID: str = os.getenv("LTM_USER_ID", "u1")
-COOKIE_SECRET: str = os.getenv("COOKIE_SECRET", "change-me-cookie-secret")
+LTM_USER_ID: str = _get_setting("LTM_USER_ID", "u1")
+COOKIE_SECRET: str = _get_setting("COOKIE_SECRET", "change-me-cookie-secret")
 
 # ── Prompt templates ──────────────────────────────────────────────────────────
 

@@ -195,7 +195,9 @@ def is_duplicate_memory(candidate: str, existing_memories: list[dict]) -> bool:
         if not exist_norm:
             continue
 
-        if cand_norm == exist_norm or cand_norm in exist_norm or exist_norm in cand_norm:
+        # If candidate is a substring of an existing memory, it is a duplicate.
+        # But if the existing memory is a substring of candidate, candidate has more info, so it's not a duplicate.
+        if cand_norm == exist_norm or cand_norm in exist_norm:
             return True
 
         ratio = SequenceMatcher(None, cand_norm, exist_norm).ratio()
@@ -204,9 +206,8 @@ def is_duplicate_memory(candidate: str, existing_memories: list[dict]) -> bool:
 
         exist_tokens = _memory_tokens(existing_text)
         if cand_tokens and exist_tokens:
-            overlap = len(cand_tokens & exist_tokens) / max(
-                1, min(len(cand_tokens), len(exist_tokens))
-            )
+            # Check if the candidate's tokens are mostly already contained in the existing memory.
+            overlap = len(cand_tokens & exist_tokens) / len(cand_tokens)
             if overlap >= 0.8:
                 return True
 

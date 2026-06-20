@@ -92,22 +92,43 @@ def _build_system_message(
 
 def _invoke_with_retry(
     messages: list[BaseMessage],
-    retries: int = 1,
-    delay_seconds: float = 0.6,
+    retries: int = 3,
+    delay_seconds: float = 0.5,
 ) -> BaseMessage:
+    import logging
+
+    logger = logging.getLogger(__name__)
     last_exc: Optional[Exception] = None
+    backoff = delay_seconds
     for attempt in range(retries + 1):
         try:
             return llm_with_tools.invoke(messages)
         except Exception as exc:
             last_exc = exc
-            if attempt < retries:
-                time.sleep(delay_seconds)
+            # Log full exception for diagnostics (safe to log message, not secrets)
+            logger.exception("LLM invocation failed on attempt %d/%d: %s", attempt + 1, retries + 1, exc)
 
+            # If it's a permanent configuration/auth error, surface a helpful hint.
+            err_text = str(exc).lower()
+            if any(k in err_text for k in ("unauthorized", "401", "forbidden", "not found", "repo")):
+                return AIMessage(
+                    content=(
+                        "Model error: authentication or model configuration issue detected. "
+                        "Please verify your HuggingFace token and `HF_REPO_ID` setting and try again."
+                    )
+                )
+
+            if attempt < retries:
+                time.sleep(backoff)
+                backoff *= 2
+
+    # If all retries exhausted, return a friendly connectivity message.
+    short = str(last_exc)[:400] if last_exc else "unknown error"
     return AIMessage(
         content=(
             "I am having a temporary model connectivity issue right now. "
-            "Please retry your message in a moment."
+            "Please retry your message in a moment.\n\n"
+            f"(Error: {short})"
         )
     )
 

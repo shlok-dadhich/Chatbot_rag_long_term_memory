@@ -43,5 +43,6 @@ htmlcov/
 
 # Misc
 *.log
+$null
 tmp/
 temp/

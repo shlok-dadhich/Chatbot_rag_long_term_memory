@@ -6,8 +6,6 @@ persistence), and a store backend for long-term memory.
 """
 
 import atexit
-import os
-
 from typing import Any
 
 try:
@@ -31,6 +29,8 @@ from langgraph.store.memory import InMemoryStore
 
 from backend.config import DB_URI
 
+_DEFAULT_LOCAL_DB_URI = "postgresql://postgres:postgres@localhost:5432/chatbot?sslmode=disable"
+
 # ── Shared connection pool ────────────────────────────────────────────────────
 
 pool: Any = None
@@ -40,12 +40,12 @@ postgres_store: Any = InMemoryStore()
 
 
 def _can_use_postgres() -> bool:
-    explicit_db_url = os.getenv("DATABASE_URL", "").strip()
-    if not explicit_db_url:
+    configured_db_url = (DB_URI or "").strip()
+    if not configured_db_url or configured_db_url == _DEFAULT_LOCAL_DB_URI:
         return False
 
     local_markers = ("localhost", "127.0.0.1")
-    if any(marker in DB_URI for marker in local_markers):
+    if any(marker in configured_db_url for marker in local_markers):
         return False
 
     return bool(ConnectionPool and PostgresSaver)
